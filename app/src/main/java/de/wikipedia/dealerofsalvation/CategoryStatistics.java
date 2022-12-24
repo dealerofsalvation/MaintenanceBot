@@ -1,19 +1,20 @@
 package de.wikipedia.dealerofsalvation;
 
-import java.time.ZoneId;
-import java.util.Calendar;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import org.wikipedia.Wiki.Revision;
 
 class CategoryStatistics {
 
-	private final long now = System.currentTimeMillis();
+	private final OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 	private int removed;
 	private int newCount;
 	private int added;
 	private int oldCount;
 	private String catName;
-	private Calendar oldest;
+	private OffsetDateTime oldest;
 	private long sumOfAges;
 
 	CategoryStatistics(MaintenanceCategory category) {
@@ -30,11 +31,11 @@ class CategoryStatistics {
 	}
 
 	void analyze(Revision revision) {
-		Calendar timestamp = revision.getTimestamp();
-		if (null == oldest || timestamp.before(oldest)) {
+		OffsetDateTime timestamp = revision.getTimestamp();
+		if (null == oldest || timestamp.isBefore(oldest)) {
 			oldest = timestamp;
 		}
-		long age = (now - timestamp.getTimeInMillis()) / 24L / 3600L / 1000L;
+		long age = Duration.between(timestamp, now).toDays();
 		sumOfAges += age;
 	}
 
@@ -89,12 +90,12 @@ class CategoryStatistics {
 
 	void writeOverviewEntryPart2(StringBuilder overview) {
 		
-		Calendar oldest = this.oldest;
+		OffsetDateTime oldest = this.oldest;
 		if (null == oldest) {
 			throw new IllegalStateException("please call 'analyze' first");
 		}
 		overview.append(" || ");
-		overview.append(oldest.getTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+		overview.append(oldest.toLocalDate());
 		overview.append(" || ");
 		overview.append(sumOfAges / newCount);
 		overview.append("\n");
