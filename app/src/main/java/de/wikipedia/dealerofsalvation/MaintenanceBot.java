@@ -10,9 +10,14 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Calendar;
-import java.util.Date;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -76,7 +81,7 @@ public class MaintenanceBot {
 	private final Map<String, String> listContents = new HashMap<>();
 
 	public MaintenanceBot(Properties properties) {
-		wiki = new Wiki("https://de.wikipedia.org/w/api.php");
+		wiki = Wiki.newSession("de.wikipedia.org");
 		tablePrefix = properties.getProperty("tablePrefix");
 		user = properties.getProperty("user");
 		password = properties.getProperty("password");
@@ -106,18 +111,18 @@ public class MaintenanceBot {
 			// Map of pages in category, as currently queried from API, and, if
 			// MaintenanceCategory.queryTimestamp is set, the
 			// timestamp the category was added to the page.
-			Map<String, Calendar> currentEntries = readCurrentEntries(category);
+			Map<String, OffsetDateTime> currentEntries = readCurrentEntries(category);
 
 			// Remove old entries from work map:
 			entries.keySet().retainAll(currentEntries.keySet());
 			stats.setCountAfterRemove(entries.size());
 			try {
 				// Add new entries to work map:
-				for (Entry<String, Calendar> entry : currentEntries.entrySet()) {
+				for (Entry<String, OffsetDateTime> entry : currentEntries.entrySet()) {
 					String title = entry.getKey();
 					if (!entries.containsKey(title)) {
 						// Timestamp the article was added according to API
-						Calendar timestamp = entry.getValue();
+						OffsetDateTime timestamp = entry.getValue();
 						try {
 							Revision revision = queryFirstRevisionWithTemplate(
 									category, title, timestamp);
@@ -145,12 +150,12 @@ public class MaintenanceBot {
 						+ " Artikel in allen Listen.");
 	}
 
-	private Map<String, Calendar> readCurrentEntries(
+	private Map<String, OffsetDateTime> readCurrentEntries(
 			MaintenanceCategory category) throws IOException {
 		String name = category.getName();
-		CategoryMember[] members = wiki.queryCategoryMembers("Wikipedia:" 
+		List<CategoryMember> members = wiki.getCategoryMembers("Wikipedia:" 
 				+ name, 0);
-		Map<String, Calendar> result = new HashMap<>();
+		Map<String, OffsetDateTime> result = new HashMap<>();
 		for (CategoryMember member : members) {
 			result.put(member.getTitle(), member.getTimestamp());
 		}
@@ -212,7 +217,7 @@ public class MaintenanceBot {
 			if (null == revision) {
 				logger.warning("null revision. title=" + title);
 			} else {
-				int year = revision.getTimestamp().get(YEAR);
+				int year = revision.getTimestamp().getYear();
 				entriesByYear.get(year).put(title, revision);
 			}
 		}
@@ -255,7 +260,6 @@ public class MaintenanceBot {
 	}
 
 	static class LineFormat {
-		final private DateFormat dateFormat = getISODateFormat();
 		private NumberFormat revisionFormat;
 
 		{
@@ -271,8 +275,8 @@ public class MaintenanceBot {
 			if (revision == null) {
 				logger.warning("null revision: " + title);
 			} else {
-				Date time = revision.getTimestamp().getTime();
-				Long revid = revision.getRevid();
+				LocalDate date = revision.getTimestamp().toLocalDate();
+				Long revid = revision.getID();
 				StringBuilder b = new StringBuilder();
 				b.append("{{../");
 				if (split) {
@@ -281,7 +285,7 @@ public class MaintenanceBot {
 				b.append("z|");
 				b.append(revisionFormat.format(revid));
 				b.append("|");
-				b.append(dateFormat.format(time));
+				b.append(date);
 				b.append("|");
 				b.append(title);
 				b.append("}}\n");
@@ -310,23 +314,22 @@ public class MaintenanceBot {
 			Map<String, Revision> result) throws IOException {
 		String text;
 		try {
-			text = wiki.getPageText(pageName);
+			text = wiki.getPageText(Collections.singletonList(pageName)).get(0);
 		} catch (FileNotFoundException e1) {
 			text = "";
 		}
 		listContents.put(pageName, text);
 		String[] lines = text.split("\n");
-		DateFormat dateFormat = getISODateFormat();
 		for (String line : lines) {
 			if ((line.startsWith("{{../z|") || line.startsWith("{{../../z|"))
 					&& line.endsWith("}}")) {
 				String[] tokens = line.split("\\|");
 				long revID;
-				Date date;
+				LocalDate date;
 				String title;
 				try {
 					revID = Long.parseLong(tokens[1]);
-					date = dateFormat.parse(tokens[2]);
+					date = LocalDate.parse(tokens[2]);
 					title = tokens[3].substring(0, tokens[3].length() - 2)
 							.replaceAll("_", " ");
 				} catch (ParseException | NumberFormatException
@@ -335,21 +338,14 @@ public class MaintenanceBot {
 					e.printStackTrace();
 					continue;
 				}
-				long time = date.getTime();
-				Calendar cal = Calendar.getInstance();
-				cal.setTimeInMillis(time);
-				Revision revision = new Revision(revID, cal, null);
+				Revision revision = wiki.new Revision(revID, OffsetDateTime.of(date, LocalTime.MIDNIGHT, ZoneOffset.UTC), null);
 				result.put(title, revision);
 			}
 		}
 	}
 
-	private static SimpleDateFormat getISODateFormat() {
-		return new SimpleDateFormat("yyyy-MM-dd");
-	}
-
 	private Revision queryFirstRevisionWithTemplate(
-			final MaintenanceCategory cat, final String title, Calendar rvStart)
+			final MaintenanceCategory cat, final String title, OffsetDateTime rvStart)
 			throws IOException, NoMaintenanceTemplateFoundException {
 		// for each handler invocation, the oldest revision containing the
 		// maintenance

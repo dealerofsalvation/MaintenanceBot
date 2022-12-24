@@ -39,6 +39,10 @@ import java.util.zip.GZIPInputStream;
 
 import javax.security.auth.login.*;
 
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+
+
 /**
  *  This is a somewhat sketchy bot framework for editing MediaWiki wikis.
  *  Requires JDK 11 or greater. Uses the <a
@@ -5666,11 +5670,11 @@ public class Wiki implements Comparable<Wiki>
      *
      *  @param name the name of the category (with or without namespace attached)
      *  @param ns a list of namespaces to filter by, empty = all namespaces.
-     *  @return a String[] containing page titles of members of the category
+     *  @return a String[] containing page titles of members of the category FIXME
      *  @throws IOException if a network error occurs
      *  @since 0.03
      */
-    public List<String> getCategoryMembers(String name, int... ns) throws IOException
+    public List<CategoryMember> getCategoryMembers(String name, int... ns) throws IOException
     {
         return getCategoryMembers(name, 0, new ArrayList<>(), false, ns);
     }
@@ -5682,11 +5686,11 @@ public class Wiki implements Comparable<Wiki>
      *  @param subcat do you want to return members of sub-categories also? (default: false)
      *  Recursion is limited to a depth of one.
      *  @param ns a list of namespaces to filter by, empty = all namespaces.
-     *  @return a String[] containing page titles of members of the category
+     *  @return a String[] containing page titles of members of the category FIXME
      *  @throws IOException or UncheckedIOException if a network error occurs
      *  @since 0.03
      */
-    public List<String> getCategoryMembers(String name, boolean subcat, int... ns) throws IOException
+    public List<CategoryMember> getCategoryMembers(String name, boolean subcat, int... ns) throws IOException
     {
         return getCategoryMembers(name, (subcat ? 1 : 0), new ArrayList<>(), false, ns);
     }
@@ -5699,11 +5703,11 @@ public class Wiki implements Comparable<Wiki>
      *  @param sorttimestamp whether to sort the returned array by date/time
      *  added to category (earliest first)
      *  @param ns a list of namespaces to filter by, empty = all namespaces.
-     *  @return a String[] containing page titles of members of the category
+     *  @return a String[] containing page titles of members of the category FIXME
      *  @throws IOException or UncheckedIOException if a network error occurs
      *  @since 0.31
      */
-    public List<String> getCategoryMembers(String name, int maxdepth, boolean sorttimestamp, int... ns) throws IOException
+    public List<CategoryMember> getCategoryMembers(String name, int maxdepth, boolean sorttimestamp, int... ns) throws IOException
     {
         return getCategoryMembers(name, maxdepth, new ArrayList<>(), sorttimestamp, ns);
     }
@@ -5717,17 +5721,17 @@ public class Wiki implements Comparable<Wiki>
      *  @param sorttimestamp whether to sort the returned array by date/time
      *  added to category (earliest first)
      *  @param ns a list of namespaces to filter by, empty = all namespaces.
-     *  @return a String[] containing page titles of members of the category
+     *  @return a String[] containing page titles of members of the category FIXME
      *  @throws IOException or UncheckedIOException if a network error occurs
      *  @since 0.03
      */
-    protected List<String> getCategoryMembers(String name, int maxdepth, List<String> visitedcategories,
+    protected List<CategoryMember> getCategoryMembers(String name, int maxdepth, List<String> visitedcategories,
         boolean sorttimestamp, int... ns) throws IOException
     {
         name = removeNamespace(normalize(name), CATEGORY_NAMESPACE);
         Map<String, String> getparams = new HashMap<>();
         getparams.put("list", "categorymembers");
-        getparams.put("cmprop", "title");
+        getparams.put("cmprop", "title|timestamp");
         getparams.put("cmtitle", "Category:" + name);
         if (sorttimestamp)
             getparams.put("cmsort", "timestamp");
@@ -5749,7 +5753,7 @@ public class Wiki implements Comparable<Wiki>
             getparams.put("cmnamespace", constructNamespaceString(ns));
         final boolean nocat2 = nocat;
 
-        List<String> members = makeListQuery("cm", getparams, null, "getCategoryMembers", -1, (line, results) ->
+        List<CategoryMember> members = makeListQuery("cm", getparams, null, "getCategoryMembers", -1, (line, results) ->
         {
             try
             {
@@ -5763,13 +5767,15 @@ public class Wiki implements Comparable<Wiki>
                     if (maxdepth > 0 && iscat && !visitedcategories.contains(member))
                     {
                         visitedcategories.add(member);
-                        List<String> categoryMembers = getCategoryMembers(member, maxdepth - 1, visitedcategories, sorttimestamp, ns);
+                        List<CategoryMember> categoryMembers = getCategoryMembers(member, maxdepth - 1, visitedcategories, sorttimestamp, ns);
                         results.addAll(categoryMembers);
                     }
 
                     // ignore this item if we requested subcat but not CATEGORY_NAMESPACE
-                    if (!(maxdepth > 0) || !nocat2 || !iscat)
-                        results.add(member);
+                    if (!(maxdepth > 0) || !nocat2 || !iscat) {
+			OffsetDateTime timestamp = OffsetDateTime.parse(parseAttribute(line, "timestamp", x));
+                        results.add(new CategoryMember(member, timestamp));
+		    }
                 }
             }
             catch (IOException ex)
@@ -6595,6 +6601,169 @@ public class Wiki implements Comparable<Wiki>
     }
 
     // INNER CLASSES
+    	public class CategoryMember {
+		private final String title;
+		private final OffsetDateTime timestamp;
+
+		private CategoryMember(String title, OffsetDateTime timestamp) {
+			super();
+			this.title = title;
+			this.timestamp = timestamp;
+		}
+
+		public String getTitle() {
+			return title;
+		}
+
+		public OffsetDateTime getTimestamp() {
+			return timestamp;
+		}
+
+	}
+
+	public class RevisionWalker implements AutoCloseable {
+
+		private String url;
+
+		private String rvcontinue;
+
+		private XMLStreamReader reader;
+
+		private InputStream stream;
+
+		private Revision revision;
+
+		private String text;
+
+		private int rvLimit = 5;
+
+		public RevisionWalker(String title, OffsetDateTime rvStart)
+				throws IOException {
+			StringBuilder url = new StringBuilder(query);
+			url.append("&prop=revisions");
+			if (rvStart != null) {
+				url.append("&rvstart=");
+				url.append(rvStart);
+			}
+			url.append("&rvprop=ids|content|user|timestamp");
+			url.append("&titles=");
+			try {
+				url.append(URLEncoder.encode(normalize(title), "UTF-8"));
+			} catch (UnsupportedEncodingException e) {
+				// Won't happen - any conformat JVM supports UTF-8
+				throw new RuntimeException(e);
+			}
+			this.url = url.toString();
+		}
+
+		public boolean next() throws IOException {
+			try {
+				if (null == reader) {
+					String url = this.url;
+					url = url + "&rvlimit=" + rvLimit;
+					rvLimit *= 2;
+					if (rvcontinue != null) {
+						// FIXME noch ungetesteter Zweig
+						url = url + "&rvcontinue=" + rvcontinue;
+						rvcontinue = null;
+					}
+					stream = fetchStream(url, "RevisionWalker");
+					reader = factory.createXMLStreamReader(stream);
+					top: while (true) {
+						reader.nextTag();
+						if (reader.isStartElement()) {
+							switch (reader.getLocalName()) {
+							case "query-continue":
+								reader.nextTag();
+								rvcontinue = reader.getAttributeValue(null,
+										"rvcontinue");
+								break;
+							case "warnings":
+								warnings: while (true) {
+									reader.nextTag();
+									if (reader.isStartElement()
+											&& "result".equals(reader
+													.getLocalName())) {
+										// e. g.
+										// "This result was truncated because it would otherwise be larger than the limit of 12582912 bytes"
+										String message = reader
+												.getElementText();
+										log(Level.WARNING, "RevisionWalker",
+												message);
+									} else if (reader.isEndElement()
+											&& "warnings".equals(reader
+													.getLocalName())) {
+										break warnings;
+									}
+								}
+								break;
+							case "revisions":
+								break top;
+							}
+						}
+					}
+				}
+				reader.nextTag();
+				if (reader.isStartElement()) {
+					assert "rev".equals(reader.getLocalName());
+					String revidStr = reader.getAttributeValue(null, "revid");
+					long revid = (null == revidStr) ? 0 : Long
+							.parseLong(revidStr);
+					String timestampStr = reader.getAttributeValue(null,
+							"timestamp");
+					OffsetDateTime timestamp = (null == timestampStr) ? null
+							: OffsetDateTime.parse(timestampStr);
+					String user = reader.getAttributeValue(null, "user");
+					revision = new Revision(revid, timestamp, user);
+					text = reader.getElementText();
+					return true;
+				}
+				close();
+				if (null == rvcontinue) {
+					// FIXME noch ungetesteter Zweig
+					return false;
+				}
+				return next();
+			} catch (XMLStreamException e) {
+				throw new RuntimeException(e);
+			}
+
+			// FIXME berücksichtigen
+			// case "error":
+			// String code = attributes.getValue("code");
+			// String info = attributes.getValue("info");
+			// throw new RuntimeException("MW API error: code=" + code
+			// + "info=" + info);
+		}
+
+		@Override
+		public void close() throws IOException {
+			if (null != stream) {
+				stream.close();
+				stream = null;
+			}
+			if (null != reader) {
+				try {
+					reader.close();
+					reader = null;
+				} catch (XMLStreamException e) {
+					throw new RuntimeException(e);
+				}
+			}
+		}
+
+		// XXX Zur Konsistenz mit Revision besser über revision.getText
+		// zurückgeben.
+		// Dann kann evtl. auch revision() die Funktion von next() übernehmen.
+		public String text() {
+			return text;
+		}
+
+		public Revision revision() {
+			return revision;
+		}
+	}
+
     
     /**
      *  Subclass for wiki users.
@@ -7312,6 +7481,11 @@ public class Wiki implements Comparable<Wiki>
         private long previous = 0, next = 0;
         private int size = 0, sizediff = 0;
         private boolean pageDeleted = false;
+
+        public Revision(long revid, OffsetDateTime timestamp, String user)
+        {
+		this(revid, timestamp, user, null, null, "UNKNOWN TITLE", null, false, false, false, 0);
+	}
 
         /**
          *  Constructs a new Revision object.
