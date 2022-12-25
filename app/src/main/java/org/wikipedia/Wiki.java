@@ -39,6 +39,7 @@ import java.util.zip.GZIPInputStream;
 
 import javax.security.auth.login.*;
 
+import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
@@ -410,6 +411,9 @@ public class Wiki implements Comparable<Wiki>
     }
 
     private static final String version = "0.38";
+
+	private final XMLInputFactory factory = XMLInputFactory.newInstance();
+
 
     // fundamental URL strings
     private final String protocol, domain, scriptPath;
@@ -6623,7 +6627,7 @@ public class Wiki implements Comparable<Wiki>
 
 	public class RevisionWalker implements AutoCloseable {
 
-		private String url;
+		private Map<String, String> getparams = new HashMap<>();
 
 		private String rvcontinue;
 
@@ -6639,32 +6643,23 @@ public class Wiki implements Comparable<Wiki>
 
 		public RevisionWalker(String title, OffsetDateTime rvStart)
 				throws IOException {
-			StringBuilder url = new StringBuilder(query);
-			url.append("&prop=revisions");
+			getparams.put("action", "query");
+			getparams.put("prop", "revisions");
 			if (rvStart != null) {
-				url.append("&rvstart=");
-				url.append(rvStart);
+				getparams.put("rvstart", rvStart.toString());
 			}
-			url.append("&rvprop=ids|content|user|timestamp");
-			url.append("&titles=");
-			try {
-				url.append(URLEncoder.encode(normalize(title), "UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				// Won't happen - any conformat JVM supports UTF-8
-				throw new RuntimeException(e);
-			}
-			this.url = url.toString();
+			getparams.put("rvprop", "ids|content|user|timestamp");
+			getparams.put("titles", normalize(title));
 		}
 
 		public boolean next() throws IOException {
 			try {
 				if (null == reader) {
-					String url = this.url;
-					url = url + "&rvlimit=" + rvLimit;
+					getparams.put("rvlimit", Integer.toString(rvLimit));
 					rvLimit *= 2;
 					if (rvcontinue != null) {
 						// FIXME noch ungetesteter Zweig
-						url = url + "&rvcontinue=" + rvcontinue;
+						getparams.put("rvcontinue", rvcontinue);
 						rvcontinue = null;
 					}
 					stream = fetchStream(url, "RevisionWalker");
