@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
@@ -314,6 +315,10 @@ public class MaintenanceBot {
 		String text;
 		try {
 			text = wiki.getPageText(Collections.singletonList(pageName)).get(0);
+			if (null == text) {
+				logger.log(Level.WARNING, "Null page text for " + pageName);
+				text = "";
+			}
 		} catch (FileNotFoundException e1) {
 			text = "";
 		}
@@ -328,10 +333,10 @@ public class MaintenanceBot {
 				String title;
 				try {
 					revID = Long.parseLong(tokens[1]);
-					date = LocalDate.parse(tokens[2]);
+					date = LocalDate.parse(tokens[2].substring(0,10)); // sometimes people add notes after the date
 					title = tokens[3].substring(0, tokens[3].length() - 2)
 							.replaceAll("_", " ");
-				} catch (NumberFormatException
+				} catch (DateTimeParseException | NumberFormatException
 						| ArrayIndexOutOfBoundsException e) {
 					logger.warning("parse error at line: " + line);
 					e.printStackTrace();

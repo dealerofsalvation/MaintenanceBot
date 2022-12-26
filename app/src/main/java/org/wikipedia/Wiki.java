@@ -6649,7 +6649,9 @@ public class Wiki implements Comparable<Wiki>
 			getparams.put("action", "query");
 			getparams.put("prop", "revisions");
 			if (rvStart != null) {
-				getparams.put("rvstart", rvStart.toString());
+				getparams.put("rvstart",
+						// Not using toString(), because that truncates 00 seconds, which the API doesn't accept:
+						DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(rvStart));
 			}
 			getparams.put("rvprop", "ids|content|user|timestamp");
 			getparams.put("titles", normalize(title));
