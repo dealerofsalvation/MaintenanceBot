@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -332,7 +331,7 @@ public class MaintenanceBot {
 					date = LocalDate.parse(tokens[2]);
 					title = tokens[3].substring(0, tokens[3].length() - 2)
 							.replaceAll("_", " ");
-				} catch (ParseException | NumberFormatException
+				} catch (NumberFormatException
 						| ArrayIndexOutOfBoundsException e) {
 					logger.warning("parse error at line: " + line);
 					e.printStackTrace();

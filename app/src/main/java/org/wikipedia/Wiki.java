@@ -43,6 +43,9 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+// The HTTP status code constants:
+import static java.net.HttpURLConnection.*;
+
 
 /**
  *  This is a somewhat sketchy bot framework for editing MediaWiki wikis.
@@ -6662,7 +6665,7 @@ public class Wiki implements Comparable<Wiki>
 						getparams.put("rvcontinue", rvcontinue);
 						rvcontinue = null;
 					}
-					stream = fetchStream(url, "RevisionWalker");
+					stream = apiCallToStream(getparams, null, "RevisionWalker");
 					reader = factory.createXMLStreamReader(stream);
 					top: while (true) {
 						reader.nextTag();
@@ -6675,7 +6678,7 @@ public class Wiki implements Comparable<Wiki>
 								break;
 							case "warnings":
 								warnings: while (true) {
-									reader.nextTag();
+									reader.next();
 									if (reader.isStartElement()
 											&& "result".equals(reader
 													.getLocalName())) {
@@ -8378,6 +8381,12 @@ public class Wiki implements Comparable<Wiki>
      */
     public String makeApiCall(Map<String, String> getparams, Map<String, Object> postparams, String caller) throws IOException
     {
+	return streamToString(apiCallToStream(getparams, postparams, caller));
+    }
+
+    public InputStream apiCallToStream(Map<String, String> getparams, Map<String, Object> postparams,
+		    String caller) throws IOException
+    {
         // build the URL
         StringBuilder urlbuilder = new StringBuilder(apiUrl + "?");
         getparams = new HashMap<>(getparams); // ensure this map is mutable
@@ -8445,7 +8454,6 @@ public class Wiki implements Comparable<Wiki>
         }
 
         // main fetch/retry loop
-        String response = null;
         int tries = maxtries;
         do
         {
@@ -8472,11 +8480,13 @@ public class Wiki implements Comparable<Wiki>
                     throw new HttpRetryException("Database lagged.", 503);
                 }
 
-                try (BufferedReader in = new BufferedReader(new InputStreamReader(
-                    zipped_ ? new GZIPInputStream(hr.body()) : hr.body(), "UTF-8")))
-                {
-                    response = in.lines().collect(Collectors.joining("\n"));
+                InputStream inputStream = zipped_ ? new GZIPInputStream(hr.body()) : hr.body();
+		int statusCode = hr.statusCode();
+		log(Level.INFO, "makeApiCall", "Received status " + statusCode);
+		if (statusCode == HTTP_OK) { // TODO Does the API actually return non-OK for the relevant cases below?
+			return inputStream;
                 }
+		String response = streamToString(inputStream);
 
                 // Check for rate limit (though might be a long one e.g. email)
                 if (response.contains("error code=\"ratelimited\""))
@@ -8511,9 +8521,17 @@ public class Wiki implements Comparable<Wiki>
         while (tries != 0);
     
         // empty response from server
-        if (response.isEmpty())
-            throw new UnknownError("Received empty response from server!");
-        return response;
+        // TODO If a check for empty response is necessary, re-implement it
+	// if (response.isEmpty())
+           // throw new UnknownError("Received empty response from server!");
+        // return response;
+	throw new IOException("All tries used up");
+    }
+
+    public static String streamToString(InputStream inputStream) throws IOException {
+	try (BufferedReader in = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+		return in.lines().collect(Collectors.joining("\n"));
+	}
     }
 
     /**
