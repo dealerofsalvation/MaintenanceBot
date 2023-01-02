@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<java version="1.7.0_45" class="java.beans.XMLDecoder">
+ <object class="java.util.ArrayList">
+	 <!--
+  -->
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Österreichlastig</string>
+    <boolean>false</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Staatslastig *\| *1=AT</string>
+     </void>
+     <void method="add">
+      <string>Regionsbezogen *\| *1=AT</string>
+     </void>
+     <void method="add">
+      <string>Staatslastig *\| *AT</string>
+     </void>
+     <void method="add">
+      <string>Regionsbezogen *\| *AT</string>
+     </void>
+     <!-- gelöscht, aber in alten Revisionen zu finden: -->
+     <void method="add">
+      <string>Österreichlastig</string>
+     </void>
+    </object>
+   </object>
+  </void>
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Deutschlandlastig</string>
+    <boolean>true</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Staatslastig *\| *1=DE</string>
+     </void>
+     <void method="add">
+      <string>Regionsbezogen *\| *1=DE</string>
+     </void>
+     <void method="add">
+      <string>Staatslastig *\| *DE</string>
+     </void>
+     <void method="add">
+      <string>Regionsbezogen *\| *DE</string>
+     </void>
+     <void method="add">
+      <string>Deutschlandlastig</string>
+     </void>
+    </object>
+   </object>
+  </void>
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Schweizlastig</string>
+    <boolean>false</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Staatslastig *\| *1=CH</string>
+     </void>
+     <void method="add">
+      <string>Regionsbezogen *\| *1=CH</string>
+     </void>
+     <void method="add">
+      <string>Staatslastig *\| *CH</string>
+     </void>
+     <void method="add">
+      <string>Regionsbezogen *\| *CH</string>
+     </void>
+     <!-- gelöscht, aber in alten Revisionen zu finden: -->
+     <void method="add">
+      <string>Schweizlastig</string>
+     </void>
+    </object>
+   </object>
+  </void>
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Neutralität</string>
+    <boolean>true</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Neutralität</string>
+     </void>
+     <void method="add">
+      <string>NPOV</string>
+     </void>
+     <void method="add">
+      <string>POV</string>
+     </void>
+    </object>
+   </object>
+  </void>
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Lückenhaft</string>
+    <boolean>true</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Lückenhaft</string>
+     </void>
+     <void method="add">
+      <string>Unvollständig</string>
+     </void>
+    </object>
+   </object>
+  </void>
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Belege fehlen</string>
+    <boolean>true</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Belege</string>
+     </void>
+     <void method="add">
+      <string>Quellen</string>
+     </void>
+     <void method="add">
+      <string>Quelle</string>
+     </void>
+     <void method="add">
+      <string>Belege fehlen</string>
+     </void>
+     <void method="add">
+      <string>Quellen fehlen</string>
+     </void>
+    </object>
+   </object>
+  </void>
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Nur Liste</string>
+    <boolean>true</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Liste</string>
+     </void>
+     <void method="add">
+      <string>NurListe</string>
+     </void>
+     <void method="add">
+      <string>Nur Liste</string>
+     </void>
+    </object>
+   </object>
+  </void>
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Überarbeiten</string>
+    <boolean>true</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Überarbeiten</string>
+     </void>
+     <void method="add">
+      <string>ÜA</string>
+     </void>
+     <void method="add">
+      <string>Wikify</string>
+     </void>
+     <void method="add">
+      <string>QS-Änderung der Grenzen Osttimor</string>
+     </void>
+     <void method="add">
+      <string>Stadion ungeprüft</string>
+     </void>
+    </object>
+   </object>
+  </void>
+  <void method="add">
+   <object class="de.wikipedia.dealerofsalvation.MaintenanceCategory">
+    <string>Veraltet</string>
+    <boolean>true</boolean>
+    <object class="java.util.ArrayList">
+     <void method="add">
+      <string>Veraltet</string>
+     </void>
+    </object>
+   </object>
+  </void>
+ </object>
+</java>

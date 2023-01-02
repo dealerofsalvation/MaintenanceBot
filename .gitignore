@@ -1,0 +1,8 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+app/build
+
+# Copy mbot-example.properties to this file and adjust it:
+app/mbot.properties
