@@ -66,7 +66,7 @@ public class MaintenanceBot {
 
 	private String password;
 
-	private static final int FIRST_YEAR = 2004;
+	private static final int FIRST_YEAR = 2005;
 
 	private final int currentYear = Calendar.getInstance().get(YEAR);
 
