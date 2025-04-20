@@ -47,6 +47,9 @@
      <void method="add">
       <string>Deutschlandlastig</string>
      </void>
+     <void method="add">
+      <string>Deutschlandbezogen</string>
+     </void>
     </object>
    </object>
   </void>
